@@ -1,0 +1,241 @@
+---
+title: 'Case Study: Ramen'
+author: "Nathacia Nathacia"
+date: '2022-09-23'
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Loading data and necessary packages
+```{r, results='hide'}
+load("/Users/nathacia/Desktop/r wd/bsds/ramen.Rdata")
+
+library(stringr)
+library(dplyr)
+library(ggpubr)
+```
+
+# Case Study: Ramen dataset
+#### The data contains reviews from Ramen Rater. It includes variables for Brand, Variety, Serving Style, Country of Origin, Number of Stars, and if it has ever won a place in the Top Ten Ramens of the Year.
+#### The case study will follow 13 leading questions, each of which will be thoroughly explained and analyzed using various functions.
+
+
+### 1. How many different brands are reviewed in the data set? Do you recognize any of them?
+```{r}
+summary(ramen)
+head(ramen)
+
+#unique(ramen$Brand)
+length(unique(ramen$Brand))
+```
+There are 355 different brands in the dataset. I recognize several brands including Knorr, Nissin, Nongshim, Paldo, MAMA, Mie Sedaap, and Indomie.
+
+### 2. What years do we have “top ten” data from?
+```{r}
+unique(substr(ramen$Top.Ten, 1, 4))
+```
+We have "top ten" data from the years 2012-2016.
+
+### 3. Which ramen brands are from the United States?
+```{r}
+unique(ramen$Country)
+from.us <- ramen$Brand[which(ramen$Country == "USA" | ramen$Country == "United States")]
+
+unique(ramen$Brand[from.us])
+```
+
+
+### 4. Has any brand of ramen won the #1 slot in the Top Ten Ramens list more than once? Which brand(s) is/are these?
+```{r}
+ones <- which(substr(ramen$Top.Ten, 6,7) == "#1")
+tens <- which(substr(ramen$Top.Ten, 6,8) == "#10")
+
+ramen$Brand[setdiff(ones, tens)]
+```
+
+
+### 5. Which brand has the highest average star rating? If there is a tie, report multiple brands.
+```{r}
+averages <- aggregate(ramen$Stars, by = list(ramen$Brand), FUN = mean)
+averages$Group.1[which.max(averages$x)]
+```
+
+
+### 6. Is the way a ramen is packaged related to which country it is from?
+
+```{r}
+table_stylecountry <- table(ramen$Style, ramen$Country)
+chisq.test(table_stylecountry)
+```
+The X-squared value of 704.92 is the test statistic, which measures the difference between the observed frequencies in the contingency table and the expected frequencies under the assumption of independence between the rows and columns of the table. A larger test statistic indicates a stronger deviation from independence and stronger evidence against the null hypothesis of independence.
+The df value of 259 is the degrees of freedom for the test, which is calculated as the product of the number of levels of each variable minus 1. In this case, it indicates the number of degrees of freedom for the chi-squared distribution that was used to calculate the p-value.
+The p-value of less than 2.2e-16 (essentially 0) indicates strong evidence against the null hypothesis of independence, and suggests that there is a significant association between the two variables represented in the contingency table.
+Therefore, based on this output, we can reject the null hypothesis of independence and conclude that there is a statistically significant association between the rows and columns of the table_stylecountry table.
+This is quite predictable as all countries seem to have more of the 'pack' style of ramen. This is simply due to the fact that pack style ramen is the most popular style option among consumers.
+
+
+### 7. What is the average, maximum, and minimum rating for ramens from the US? What about for ramens from Singapore? Based on your findings, which country do you expect to land in the Top Ten more often? Check your prediction.
+```{r}
+max(ramen$Stars[which(ramen$Country == "USA" | ramen$Country == "United States")])
+min(ramen$Stars[which(ramen$Country == "USA" | ramen$Country == "United States")])
+mean(ramen$Stars[which(ramen$Country == "USA" | ramen$Country == "United States")])
+
+max(ramen$Stars[which(ramen$Country == "Singapore")])
+min(ramen$Stars[which(ramen$Country == "Singapore")])
+mean(ramen$Stars[which(ramen$Country == "Singapore")])
+```
+Based on my findings, I would expect Singapore to land in the Top 10 more often. This is because Singapore's lowest ramen rating is 2 whereas the United States has a lowest ramen rating of 0. Furthermore, Singapore has a higher average ramen rating, with Singapore having an average of 4.13 and the US having an average of 3.46.
+```{r}
+usatopten <- which(substr(ramen$Top.Ten, 6,6) == "#" & ramen$Country == "USA")
+unitedstatestopten <- which(substr(ramen$Top.Ten, 6,6) == "#" & ramen$Country == "United States")
+ramen$Brand[usatopten]
+
+sgtopten <- which(substr(ramen$Top.Ten, 6,6) == "#" & ramen$Country == "Singapore")
+ramen$Brand[sgtopten]
+```
+My predictions are correct. US has been placed in the top ten ramen only once whereas Singapore has been placed 7 times.
+
+
+### 8. Which country makes the most ramen? Which country makes the best ramen? How did you define “best”? Why? Was the country that makes the best ramen also the country that makes the most ramen?
+```{r}
+table(ramen$Country)
+
+table(ramen$Country[which(substr(ramen$Top.Ten, 6,6) == "#")])
+```
+Japan makes the most ramen (352). The country that makes the best ramen is Singapore.
+My definition of the best ramen is determined by the number of times a ramen from a particular country is placed on the Top Ten list throughout the years.
+No, the country with the most number of ramens (Japan) is not the same as the country with the best ramen. Singapore has placed on the top ten 7 times and Japan is a close runner up with 6 placements.
+
+
+### 9. How many ramens are considered spicy as part of their variety? Are spicy ramens typically rated higher than non-spicy ramens?
+```{r}
+library(stringr)
+
+numberofspicy <- sum(str_detect(ramen$Variety, 'Spicy | spicy | Chilli | Hot | Pedas | Cabe | Sambal'))
+print(numberofspicy)
+print((numberofspicy/2580)*100)
+
+spicyvariant <- which(str_detect(ramen$Variety, 'Spicy | spicy | Chilli | Hot | Pedas | Cabe | Sambal'))
+mean(ramen$Stars[spicyvariant])
+
+nonspicyvariant <- ramen[!grepl('Spicy | spicy | Chilli | Hot | Pedas | Cabe | Sambal', ramen$Variety),]
+nonspicyvariant <- na.omit(nonspicyvariant)
+mean(nonspicyvariant$Stars)
+```
+320 ramens, or 12.4% of all the ramen in the dataset, are considered to be spicy as part of their variety. I have chosen to include the words "Chili" as well as "Hot" to make these predictions more accurate.
+The spicy ramens are rated slightly higher than non-spicy ramens. Spicy ramens have an average rating of 3.72 whereas non-spicy ramen have an average rating of 3.65
+
+
+### 10. Based on this data set, what effect does saltiness have on ramen ratings?
+```{r}
+library("ggpubr")
+ggscatter(ramen, x = "Stars", y = "perc_salt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "Star Ratings", ylab = "Salt Percentage (%)")
+```
+From the graph, we can see that there is a general upwards trend, indicating that ramen with higher salt percentages have higher ratings. However, we can also observe that the ramen with the highest rating (5) have a wide range of salt percentages, ranging from approximately 15% to 20%.
+
+
+### 11. Are there certain styles, countries, brands, or flavors of ramen that tend to use more or less salt?
+```{r, echo = TRUE}
+summary(ramen)
+
+beeftest <- which(str_detect(ramen$Variety, 'Beef | beef'))
+summary(ramen$perc_salt[beeftest])
+
+chickentest <- which(str_detect(ramen$Variety, 'Chicken | chicken'))
+summary(ramen$perc_salt[chickentest])
+
+porktest <- which(str_detect(ramen$Variety, 'Pork | pork | Tonkotsu'))
+summary(ramen$perc_salt[porktest])
+
+souptest <- which(str_detect(ramen$Variety, 'Soup | soup | Kuah'))
+summary(ramen$perc_salt[souptest])
+
+veggietest <- which(str_detect(ramen$Variety, 'Veggie | Veg | Vegetable'))
+summary(ramen$perc_salt[veggietest])
+```
+We can see that, on average, ramen with pork and beef flavors have the most salt composition, with salt percentages being 19.03% and 19.04% respectively.
+```{r}
+brands_highsalt<- ramen$Brand[which(ramen$perc_salt>=20.198)]
+brands_highsalt_df <- data.frame(brands_highsalt)
+dplyr::count(brands_highsalt_df, brands_highsalt, sort=TRUE)
+```
+We can also see that the brand Nissin has the most ramen with a salt percentage falling above the 3rd quartile. Nissin has 102 ramen with this high salt percentage, whereas the runner ups, Maruchan and Nongshim, both have only 21 ramen that falls in this category.
+```{r}
+brands_lowsalt<- ramen$Brand[which(ramen$perc_salt<=16)]
+brands_lowsalt_df <- data.frame(brands_lowsalt)
+#dplyr::count(brands_lowsalt_df, brands_lowsalt, sort=TRUE)
+```
+Baija, Mr. Noodles, and Ottogi are some of the brands that make ramen with a salt percentage of 16% and below.
+```{r}
+style_highsalt <- ramen$Style[which(ramen$perc_salt>=20.198)]
+table(style_highsalt)
+table(ramen$Style)
+```
+We can see that 24.9% of the bowl style, 24.9% of the cup style, 25.1% of the pack style and 26.9% of the tray style ramen have a salt composition above the 3rd quartile. They are roughly the same, and this is most likely attributed to the fact that each style of ramen has a large variety of flavors and ramen, and about the same percentage of all the ramen of each style has a high salt percentage.
+
+
+### 12. Say that you have been hired by a brand new ramen start up. They are trying to better understand the ramen market and have asked you to break down ramen into 5 collections of “similar” ramens. How do you go about it? Discuss your findings.
+I would split the ramen by flavor: 
+1. Beef, 
+2. Chicken, 
+3. Pork, 
+4. Seafood, 
+5. Veggies.
+```{r}
+
+beefcollection <- which(str_detect(ramen$Variety, 'Beef | beef'))
+
+chickencollection <- which(str_detect(ramen$Variety, 'Chicken | chicken | Ayam | Tori'))
+
+porkcollection <- which(str_detect(ramen$Variety, 'Pork | pork | Bacon | Tonkotsu'))
+
+seafoodcollection <- which(str_detect(ramen$Variety, 'Seafood | seafood | Shrimp | Prawn | Fish'))
+
+veggiecollection <- which(str_detect(ramen$Variety, 'Veggie | Veg | Vegetable'))
+
+summary(ramen$Stars[beefcollection])
+summary(ramen$Stars[chickencollection])
+summary(ramen$Stars[porkcollection])
+summary(ramen$Stars[seafoodcollection])
+summary(ramen$Stars[veggiecollection])
+```
+Based on this, we can see that the ramen variant that has the highest average rating is seafood and pork, with an average star rating of 3.84 and 3.81 respectively.
+
+
+### 13. The ramen startup wants to make the next Top Ten Ramen winner. What recommendations do you have for them based on this data set? Support your assertions with statistics and graphs.
+```{r}
+toptenplacements <- which(substr(ramen$Top.Ten, 6,6) == "#")
+ramen$Brand[toptenplacements]
+ramen$Variety[toptenplacements]
+table(ramen$Country[toptenplacements])
+```
+Singapore has the most top ten placements of 7 times, closely followed by Japan and Malaysia with 6, and Indonesia with 4. Geographically speaking, all of the ramen that has placed in the top ten are from Asian countries aside from 1 from the USA. 
+
+```{r}
+plot(ramen$perc_salt[toptenplacements])
+mean(ramen$perc_salt[toptenplacements])
+summary(ramen$perc_salt[toptenplacements])
+```
+I would recommend that the salt percentage of the ramen stay around the mean of 18.90. Or at least preferably within the interquartile range of 18.35%-19.67%.
+```{r}
+table(ramen$Style[toptenplacements])
+```
+Furthermore, I would recommend that they make a ramen with a pack style, as 33 of the 37 ramens that have been placed on the top ten are pack style ramens.
+```{r}
+summary(ramen$Stars[toptenplacements])
+plot(ramen$Stars[toptenplacements])
+```
+Most of the ramen in the top ten range between 4 and 5. More specifically, the median falls at 5, meaning that almost all of the ramen that have been placed in the top 10 have a star rating of 5.00. Thus, in order to create the next Top Ten Ramen winner, the ramen startup should make a ramen that can receive a 5.00 rating.
+
+```{r}
+ramen$Variety[toptenplacements]
+```
+As mentioned before, all but 1 of the ramen on the top 10 are from Asian countries (Singapore, Malaysia, Japan, South Korea, Indonesia, Myanmar, Taiwan, China, and Thailand). Thus, it is no surprise that the variety of these ramen all compose of various Asian flavors. For instance, laksa and curry flavors are very popular, and these flavors originate from Southeast Asian cuisines such as Malaysia and Singapore. Additionally, spicy tom yum flavored ramen are also popular, with flavors from Thailand. The mi goreng variety also found its way to the top ten, originating from Indonesia.
+I think that the ramen startup will have a good chance of creating a Top Ten Ramen winner if they used flavors from such Asian cuisines, as it is evident that they are most likely to win top ten positions.
